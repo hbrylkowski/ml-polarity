@@ -23,12 +23,13 @@ $ python trainer/create_model.py \
     --job-dir $MODEL_DIR
 ```
 
-##Tweaks 
+## Tweaks 
 You can see all script parameters by invoking:
 ```
 $ python trainer/create_model.py -h
 ```
 
-##TODO
+## TODO
+- Write guide to predict on saved model
 - Write guide how to train this on google cloud
 - Add possibility to use pretrained word embeddings 
