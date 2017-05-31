@@ -1,10 +1,7 @@
 import argparse
 import inspect
 
-from keras.preprocessing.text import Tokenizer
 from model import create_model
-
-tokenizer = Tokenizer(30000)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -61,6 +58,10 @@ if __name__ == '__main__':
         help='Number of filters for CNN',
         default=100,
         type=int
+    )
+    parser.add_argument(
+        '--word-vectors-path',
+        help='Path to pretrained word vectors path in word2vec binary format',
     )
 
     parser.add_argument(

@@ -1,7 +1,7 @@
 import json
 import os
 
-from keras.preprocessing.text import Tokenizer
+from keras.preprocessing.text import Tokenizer, text_to_word_sequence
 from tensorflow.python.lib.io import file_io
 import csv
 import numpy as np
@@ -10,14 +10,14 @@ from keras.models import Sequential
 from keras.layers import Dense, Activation, Embedding, Conv1D, Dropout, GlobalMaxPooling1D
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras import optimizers
-
+from gensim.models.keyedvectors import KeyedVectors
 
 def pad(x):
     return np.pad(x[:51], (0, 51 - len(x[:51])), 'constant')
 
 
 def create_model(train_file, eval_file, job_dir, embedding_size, filters_count, train_batch_size, num_epochs,
-                 eval_batch_size, dictionary_size):
+                 eval_batch_size, dictionary_size, word_vectors_path):
 
     tokenizer = Tokenizer(dictionary_size)
 
@@ -35,6 +35,17 @@ def create_model(train_file, eval_file, job_dir, embedding_size, filters_count, 
         x_test = [np.array(pad(s)) for s in tokenizer.texts_to_sequences([l[0] for l in r])]
         y_test = [[l[1]] for l in r]
 
+    if word_vectors_path:
+        word_vectors = KeyedVectors.load_word2vec_format(word_vectors_path, binary=True)
+
+        embedding_matrix = np.zeros((dictionary_size + 1, embedding_size))
+        for w in sorted(tokenizer.word_counts.keys(), key=tokenizer.word_counts.get, reverse=True)[:dictionary_size]:
+            try:
+                embedding_vector = word_vectors.word_vec(w)
+            except KeyError:
+                continue
+            embedding_matrix[tokenizer.word_index[w]] = np.array(embedding_vector)
+
     x_train = np.array(x_train)
     y_train = np.array(y_train)
 
@@ -42,7 +53,11 @@ def create_model(train_file, eval_file, job_dir, embedding_size, filters_count, 
     y_test = np.array(y_test)
 
     model = Sequential()
-    model.add(Embedding(dictionary_size + 1, embedding_size))
+    if word_vectors_path:
+        model.add(Embedding(dictionary_size + 1, 300, weights=[embedding_matrix]))
+    else:
+        model.add(Embedding(dictionary_size + 1, embedding_size))
+
     model.add(Dropout(0.5))
 
     # we add a Convolution1D, which will learn filters
@@ -70,12 +85,10 @@ def create_model(train_file, eval_file, job_dir, embedding_size, filters_count, 
 
     env = json.loads(os.environ.get('TF_CONFIG', '{}'))
 
-    # Get the task information for gcloud learning
-
+    # Get the task information.
     task_info = env.get('task')
     if task_info:
-        trial = task_info.get('trial', '')
-        model_filename = 'model_%s.h5' % trial
+        model_filename = 'model_%s.h5' % task_info.get('trial', '')
     else:
         model_filename = 'model.h5'
 
@@ -84,7 +97,7 @@ def create_model(train_file, eval_file, job_dir, embedding_size, filters_count, 
     tensorboard = TensorBoard(histogram_freq=1)
 
     model.fit(x_train, y_train, epochs=num_epochs, batch_size=train_batch_size,
-              verbose=2, validation_data=(x_test, y_test),
+              verbose=1, validation_data=(x_test, y_test),
               callbacks=[early_stopping, model_checkpoint, tensorboard])
 
     with file_io.FileIO(model_filename, mode='rb') as input_f:

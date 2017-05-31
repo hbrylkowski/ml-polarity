@@ -23,13 +23,22 @@ $ python trainer/create_model.py \
     --job-dir $MODEL_DIR
 ```
 
+## Pretrained word embeddings
+You have to provide argument `--word-vectors-path` with path to binary vectors file and `--embedding-size` 
+(for GoogleNews it 300)
+
+[Google news vectors download](https://drive.google.com/file/d/0B7XkCwpI5KDYNlNUTTlSS21pQmM/edit?usp=sharing)
+
 ## Tweaks 
 You can see all script parameters by invoking:
 ```
 $ python trainer/create_model.py -h
 ```
 
+## Accuracy
+loss: 0.4827 - acc: 0.7702 - batch_size 1
+
+
 ## TODO
 - Write guide to predict on saved model
 - Write guide how to train this on google cloud
-- Add possibility to use pretrained word embeddings 
