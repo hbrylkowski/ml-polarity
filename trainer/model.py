@@ -8,7 +8,7 @@ import numpy as np
 
 from keras.models import Sequential
 from keras.layers import Dense, Activation, Embedding, Conv1D, Dropout, GlobalMaxPooling1D
-from keras.callbacks import EarlyStopping, ModelCheckpoint
+from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 from keras import optimizers
 
 
@@ -63,27 +63,30 @@ def create_model(train_file, eval_file, job_dir, embedding_size, filters_count, 
     model.add(Dense(1))
     model.add(Activation('sigmoid'))
 
-    print('started compiling')
     model.compile(loss='binary_crossentropy',
                   optimizer='adam',
                   metrics=['accuracy'])
 
 
-    print('started training')
     env = json.loads(os.environ.get('TF_CONFIG', '{}'))
 
-    # Get the task information.
+    # Get the task information for gcloud learning
+
     task_info = env.get('task')
+    if task_info:
+        trial = task_info.get('trial', '')
+        model_filename = 'model_%s.h5' % trial
+    else:
+        model_filename = 'model.h5'
 
-    trial = task_info.get('trial', '')
-
-    early_stopping = EarlyStopping(monitor='val_loss', patience=10)
-    model_checkpoint = ModelCheckpoint('model_%s.h5' % trial, save_best_only=True)
+    early_stopping = EarlyStopping(monitor='val_loss', patience=3)
+    model_checkpoint = ModelCheckpoint(model_filename, save_best_only=True)
+    tensorboard = TensorBoard(histogram_freq=1)
 
     model.fit(x_train, y_train, epochs=num_epochs, batch_size=train_batch_size,
               verbose=2, validation_data=(x_test, y_test),
-              callbacks=[early_stopping, model_checkpoint])
+              callbacks=[early_stopping, model_checkpoint, tensorboard])
 
-    with file_io.FileIO('model_%s.h5' % trial, mode='r') as input_f:
-        with file_io.FileIO(job_dir + '/model_%s.h5' % trial, mode='w+') as output_f:
+    with file_io.FileIO(model_filename, mode='rb') as input_f:
+        with file_io.FileIO(job_dir + '/' + model_filename, mode='bw+') as output_f:
             output_f.write(input_f.read())

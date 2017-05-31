@@ -72,8 +72,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     arguments = args.__dict__
 
-    print('Starting Census: Please lauch tensorboard to see results:\n'
-          'tensorboard --logdir=$MODEL_DIR')
+    print('Starting please lauch tensorboard to see results:\n'
+          'tensorboard --logdir=./logs')
 
     # Run the training job
     # learn_runner pulls configuration information from environment
